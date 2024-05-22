@@ -1,0 +1,13 @@
+{
+  "usernameCharacterLength": {
+    "minimum": 0,
+    "maximum": 0 
+  },
+  "pluginURL": "https://socketio-games.dinoscapedinosc.repl.co/api/v1/plugins/",
+  "defaultGames": [
+    "https://raw.githubusercontent.com/DinoscapeProgramming/Game-Package/main/src/games/connectfour.js",
+    "https://raw.githubusercontent.com/DinoscapeProgramming/Game-Package/main/src/games/tictactoe.js",
+    "https://raw.githubusercontent.com/DinoscapeProgramming/Game-Package/main/src/games/rockpaperscissors.js",
+    "https://raw.githubusercontent.com/DinoscapeProgramming/Game-Package/main/src/games/memory.js"
+  ]
+}
