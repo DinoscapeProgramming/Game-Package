@@ -1,11 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const config = require('./config.js');
+const defaultOptions = require('./defaultOptions.json');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-const defaultOptions = {
-  pluginURL: "https://socketgames.dinoscape.tk/plugins/code/",
-  pluginNameURL: "https://socketgames.dinoscape.tk/api/v1/plugins/information/"
-};
 
 function isURL(options) {
   return new Promise((resolve, reject) => {
@@ -67,59 +63,169 @@ function optionsSync() {
   });
 }
 
-function registerGame(options) {
+function registerGames(options) {
   return new Promise((resolve, reject) => {
-    if (!options || Object.keys(options).length === 0) return resolve({ action: "registerGame", err: "No options were given" });
-    if ((!Object.keys(options).includes("path") || !options.path) && (!Object.keys(options).includes("url") || !options.url) && (!Object.keys(options).includes("plugin") || !options.plugin)) return resolve({ action: "registerGame", err: "No " + (!Object.keys(options).includes("path") || !options.path) ? "path" : ((!Object.keys(options).includes("url") || !options.url) ? "url" : ((!Object.keys(options).includes("plugin") || !options.plugin) ? "plugin" : "key")) + " was given" });
-    fs.writeFile(__dirname + "/games/" + ((options.path) ? options.path : ((options.url) ? path.basename(options.url) : (fetchURLSync({ type: "json", url: defaultOptions.pluginNameURL + "?id=" + options.plugin }).data.pluginName))), (options.path) ? fs.readFileSync(options.path, "utf8") : ((options.url) ? fetchURLSync({ type: "text", url: options.url }).data : (fetchURLSync({ type: "text", url: (require("./config.js").options?.pluginURL || defaultOptions.pluginURL) + options.plugin }).data)), "utf8", (err) => {
-      if (err) return resolve({ action: "registerGame", err: err.message });
-      return resolve({ action: "registerGame", path: options.path, gamePath: __dirname + "/games/" + options.path });
-    });
+    if (!options || Object.keys(options).length === 0) return resolve({ action: "registerGames", err: "No options were given" });
+    if (!Object.keys(options).includes("games") || !options.games) return resolve({ action: "registerGames", err: "No games were given" });
+    var games = [];
+    try {
+      options.games.forEach((game, index) => {
+        if ((game.type === "url") || (game.type === "plugin")) {
+          fetchURL({ type: (game.type === "url") ? "text" : "json", url: (game.type === "url") ? game.game : ((require('./config.js').options?.pluginURL || defaultOptions.pluginURL) + "?pluginId=" + game.game) }).then((result) => {
+            games.push({
+              ...{
+                path: __dirname + "/games/" +  ((game.type === "url") ? path.basename(game.game) : ((game.type === "plugin") ? (result.data.name.toLowerCase() + ".js") : "Invalid"))
+              },
+              ...game
+            });
+            fs.writeFile(__dirname + "/games/" +  ((game.type === "url") ? path.basename(game.game) : ((game.type === "plugin") ? (result.data.name.toLowerCase() + ".js") : "Invalid")), (game.type === "url") ? result.data : ((game.type === "plugin") ? result.data.code : "Invalid"), "utf8", (err) => {
+              if (err) return resolve({ action: "registerGames", err: err.message });
+              if (options.games.length + (index + 1)) return resolve({ action: "registerGames", games });
+            });
+          });
+        } else if (game.type === "file") {
+          games.push({
+            ...{
+              path: __dirname + "/games/" + path.basename(game.game)
+            },
+            ...game
+          });
+          fs.writeFile(__dirname + "/games/" + path.basename(game.game), fs.readFileSync(game.game, "utf8"), "utf8", (err) => {
+            if (err) return resolve({ action: "registerGames", err: err.message });
+            if (options.games.length + (index + 1)) return resolve({ action: "registerGames", games });
+          });
+        } else {
+          return resolve({ action: "registerGames", err: "Invalid type" });
+        }
+      });
+    } catch (err) {
+      return resolve({ action: "registerGames", err: err.message });
+    }
   });
 }
   
-function registerGameSync(options) {
-  if (!options || Object.keys(options).length === 0) return { action: "registerGameSync", err: "No options were given" };
-  if ((!Object.keys(options).includes("path") || !options.path) && (!Object.keys(options).includes("url") || !options.url) && (!Object.keys(options).includes("plugin") || !options.plugin)) return { action: "registerGameSync", err: "No " + (!Object.keys(options).includes("path") || !options.path) ? "path" : ((!Object.keys(options).includes("url") || !options.url) ? "url" : ((!Object.keys(options).includes("plugin") || !options.plugin) ? "plugin" : "key")) + " was given" };
+function registerGamesSync(options) {
+  if (!options || Object.keys(options).length === 0) return { action: "registerGamesSync", err: "No options were given" };
+  if (!Object.keys(options).includes("games") || !options.games) return { action: "registerGamesSync", err: "No games were given" };
+  var games = [];
   try {
-    fs.writeFileSync(__dirname + "/games/" + ((options.path) ? options.path : ((options.url) ? path.basename(options.url) : (fetchURLSync({ type: "json", url: defaultOptions.pluginNameURL + "?id=" + options.plugin }).data.pluginName))), (options.path) ? fs.readFileSync(options.path, "utf8") : ((options.url) ? fetchURLSync({ type: "text", url: options.url }).data : (fetchURLSync({ type: "text", url: (require("./config.js").options?.pluginURL || defaultOptions.pluginURL) + options.plugin }).data)), "utf8");
+    options.games.forEach((game, index) => {
+      if ((game.type === "url") || (game.type === "plugin")) {
+        fetchURL({ type: (game.type === "url") ? "text" : "json", url: (game.type === "url") ? game.game : ((require('./config.js').options?.pluginURL || defaultOptions.pluginURL) + "?pluginId=" + game.game) }).then((result) => {
+          games.push({
+            ...{
+              path: __dirname + "/games/" +  ((game.type === "url") ? path.basename(game.game) : ((game.type === "plugin") ? (result.data.name.toLowerCase() + ".js") : "Invalid"))
+            },
+            ...game
+          });
+          fs.writeFileSync(__dirname + "/games/" +  ((game.type === "url") ? path.basename(game.game) : ((game.type === "plugin") ? (result.data.name.toLowerCase() + ".js") : "Invalid")), (game.type === "url") ? result.data : ((game.type === "plugin") ? result.data.code : "Invalid"), "utf8");
+          if (options.games.length === (index + 1)) return { action: "registerGamesSync", games };
+        });
+      } else if (game.type === "file") {
+        games.push({
+          ...{
+            path: __dirname + "/games/" + path.basename(game.game)
+          },
+          ...game
+        });
+        fs.writeFileSync(__dirname + "/games/" + path.basename(game.game), fs.readFileSync(game.game, "utf8"), "utf8");
+        if (options.games.length === (index + 1)) return { action: "registerGamesSync", games };
+      }  else {
+        return { action: "registerGamesSync", err: "Invalid type" };
+      }
+    });
   } catch (err) {
-    return { action: "registerGameSync", err: err.message };
+    return { action: "registerGamesSync", err: err.message };
   }
-  return { action: "registerGameSync", path: options.path, gamePath: __dirname + "/games/" + options.path };
 }
   
-function unregisterGame(options) {
+function unregisterGames(options) {
   return new Promise((resolve, reject) => {
-    if (!options || Object.keys(options).length === 0) return resolve({ action: "unregisterGame", err: "No options were given" });
-    if ((!Object.keys(options).includes("path") || !options.path) && (!Object.keys(options).includes("url") || !options.url) && (!Object.keys(options).includes("plugin") || !options.plugin)) return resolve({ action: "unregisterGame", err: "No " + (!Object.keys(options).includes("path") || !options.path) ? "path" : ((!Object.keys(options).includes("url") || !options.url) ? "url" : ((!Object.keys(options).includes("plugin") || !options.plugin) ? "plugin" : "key")) + " was given" });
-    fs.unlink(__dirname + "/games/" + ((options.path) ? options.path : ((options.url) ? path.basename(options.url) : (fetchURLSync({ type: "json", url: defaultOptions.pluginNameURL + "?id=" + options.plugin }).data.pluginName))), (err) => {
-      if (err) return resolve({ action: "unregisterGame", err: err.message });
-      return resolve({ action: "unregisterGame", path: options.path, gamePath: __dirname + "/games/" + options.path });
-    });
+    if (!options || Object.keys(options).length === 0) return resolve({ action: "unregisterGames", err: "No options were given" });
+    if (!Object.keys(options).includes("games") || !options.games) return resolve({ action: "unregisterGames", err: "No games were given" });
+    var games = [];
+    try {
+      options.games.forEach((game, index) => {
+        if (game.type === "plugin") {
+          fetchURL({ type: (game.type === "url") ? "text" : "json", url: (require('./config.js').options?.pluginURL || defaultOptions.pluginURL + "?pluginId=" + game.game) }).then((result) => {
+            games.push({
+              ...{
+                path: __dirname + "/games/" +  ((game.type === "plugin") ? (result.data.name.substring() + ".js") : "Invalid")
+              },
+              ...game
+            });
+            fs.unlink(__dirname + "/games/" + ((game.type === "plugin") ? (result.data.name.substring() + ".js") : "Invalid"), (err) => {
+              if (err) return resolve({ action: "unregisterGames", err: err.message });
+              if (options.games.length === (index + 1)) return resolve({ action: "unregisterGames", games });
+            });
+          });
+        } else if ((game.type === "url") || (game.type === "file")) {
+          games.push({
+            ...{
+              path: __dirname + "/games/" + path.basename(game.game)
+            },
+            ...game
+          });
+          fs.unlink(__dirname + "/games/" + path.basename(game.game), (err) => {
+            if (err) return resolve({ action: "unregisterGames", err: err.message });
+            if (options.games.length === (index + 1)) return resolve({ action: "unregisterGames", games });
+          });
+        } else {
+          return resolve({ action: "unregisterGames", err: "Invalid type" });
+        }
+      });
+    } catch (err) {
+      return resolve({ action: "unregisterGames", err: err.message });
+    }
+    return resolve({ action: "unregisterGames", games: options.games.map((item, index) => ({ ...item, ...{ path: paths[index] } })) });
   });
 }
   
-function unregisterGameSync(options) {
-  if (!options || Object.keys(options).length === 0) return { action: "unregisterGameSync", err: "No options were given" };
-  if ((!Object.keys(options).includes("path") || !options.path) && (!Object.keys(options).includes("url") || !options.url) && (!Object.keys(options).includes("plugin") || !options.plugin)) return { action: "unregisterGameSync", err: "No " + (!Object.keys(options).includes("path") || !options.path) ? "path" : ((!Object.keys(options).includes("url") || !options.url) ? "url" : ((!Object.keys(options).includes("plugin") || !options.plugin) ? "plugin" : "key")) + " was given" };
+function unregisterGamesSync(options) {
+  if (!options || Object.keys(options).length === 0) return { action: "unregisterGamesSync", err: "No options were given" };
+  if (!Object.keys(options).includes("games") || !options.games) return { action: "unregisterGamesSync", err: "No games were given" };
+  var games = [];
   try {
-    fs.unlinkSync(__dirname + "/games/" + ((options.path) ? options.path : ((options.url) ? path.basename(options.url) : (fetchURLSync({ type: "json", url: defaultOptions.pluginNameURL + "?id=" + options.plugin }).data.pluginName))));
+    options.games.forEach((game, index) => {
+      if (game.type === "plugin") {
+        fetchURL({ type: (game.type === "url") ? "text" : "json", url: (require('./config.json').options?.pluginURL || defaultOptions.pluginURL + "?pluginId=" + game.game) }).then((result) => {
+          games.push({
+            ...{
+              path: __dirname + "/games/" +  ((game.type === "plugin") ? (result.data.name.substring() + ".js") : "Invalid")
+            },
+            ...game
+          });
+          fs.unlinkSync(__dirname + "/games/" + ((game.type === "plugin") ? (result.data.name.substring() + ".js") : "Invalid"));
+          if (options.games.length === (index + 1)) return { action: "unregisterGamesSync", games };
+        });
+      } else if ((game.type === "url") || (game.type === "file")) {
+        games.push({
+          ...{
+            path: __dirname + "/games/" + path.basename(game.game)
+          },
+          ...game
+        });
+        fs.unlinkSync(__dirname + "/games/" + path.basename(game.game));
+        if (options.games.length === (index + 1)) return { action: "unregisterGamesSync", games };
+      } else {
+        return { action: "unregisterGames", err: "Invalid type" };
+      }
+    });
   } catch (err) {
-    return { action: "unregisterGameSync", err: err.message };
+    return { action: "unregisterGamesSync", err: err.message };
   }
-  return { action: "unregisterGameSync", path: options.path, gamePath: __dirname + "/games/" + options.path };
+  return { action: "unregisterGamesSync", games: options.games.map((item, index) => ({ ...item, ...{ path: paths[index] } })) };
 }
 
 module.exports = {
   isURL,
   fetchURL,
   options,
-  registerGame,
-  unregisterGame,
+  registerGames,
+  unregisterGames,
   isURLSync,
   fetchURLSync,
   optionsSync,
-  registerGameSync,
-  unregisterGameSync
+  registerGamesSync,
+  unregisterGamesSync
 }
